@@ -24,6 +24,7 @@ jobs:
       ksu_variant: BakaSU
       ksu_branch: main
       clean_build: false
+      disable_bakasu: false
       version: ""
       build_time: "N"
       enable_susfs: true
