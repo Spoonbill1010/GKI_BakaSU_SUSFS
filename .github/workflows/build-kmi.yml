@@ -1,6 +1,8 @@
-name: 内核构建 - 5.15 (Android 13/14)
+name: Build KMI Matrix
 
-# 适配 Node.js 24
+# 可复用工作流：把一个 GKI 数据文件展开成构建矩阵并逐项构建。
+# 由 Build GKI Kernels 调用，不需要手动运行。
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -9,94 +11,27 @@ permissions:
   actions: write
 
 on:
-  workflow_dispatch:
-    inputs:
-      # KernelSU 变体固定为 BakaSU
-      kernelsu_branch:
-        description: "KSU 分支 (main/builtin/自定义commit hash，留空使用默认)"
-        required: false
-        type: string
-        default: ""
-      clean_build:
-        description: "清洁构建 (不集成 KernelSU、SUSFS 和可选补丁)"
-        required: false
-        type: boolean
-        default: false
-      version:
-        description: "自定义版本名 (可选)"
-        required: false
-        type: string
-      build_time:
-        description: "自定义构建时间 (可选，N或留空=当前UTC)"
-        required: false
-        type: string
-        default: "Sun Dec 01 08:10:00 UTC 2024"
-      use_zram:
-        description: "启用 ZRAM 增强算法"
-        required: true
-        type: boolean
-        default: false
-      use_bbg:
-        description: "启用 BBG 防格机"
-        required: true
-        type: boolean
-        default: false
-      use_rekernel:
-        description: "启用 Re-Kernel 驱动"
-        required: false
-        type: boolean
-        default: false
-      cve_2026_43499_patch:
-        description: "应用 CVE-2026-43499 rtmutex 修复链"
-        required: false
-        type: boolean
-        default: true
-      cancel_susfs:
-        description: "禁用 SUSFS"
-        required: true
-        type: boolean
-        default: false
-      supp_op:
-        description: "启用一加 8E 支持"
-        required: false
-        type: boolean
-        default: false
-      droidspaces:
-        description: "Droidspaces 容器支持"
-        required: false
-        type: choice
-        options:
-          - "off"
-          - "678"
-          - "123"
-          - "345"
-        default: "off"
-      droidspaces_ntsync:
-        description: "启用 Droidspaces 容器 NTSync 支持（需启用 Droidspaces）"
-        required: false
-        type: boolean
-        default: false
-      build_bypass:
-        description: "同时构建普通内核和 Bypass 内核"
-        required: false
-        type: boolean
-        default: false
-      use_nomount:
-        description: "启用 NoMount 挂载元模块（需配套模块）"
-        required: false
-        type: boolean
-        default: false
   workflow_call:
     inputs:
-      android_version:
-        required: false
+      data_file:
+        description: "GKI version data file, e.g. data/android15/6.6.json"
+        required: true
         type: string
-        default: android13
+      deduplicate_sublevels:
+        description: "Keep only the first patch level for each kernel sublevel"
+        required: false
+        type: boolean
+        default: true
+
+      # ==================== Build configuration ====================
       clean_build:
         required: false
         type: boolean
         default: false
-      # KernelSU 变体固定为 BakaSU
+      disable_bakasu:
+        required: false
+        type: boolean
+        default: false
       kernelsu_branch:
         required: true
         type: string
@@ -107,6 +42,8 @@ on:
         required: false
         type: string
         default: "Sun Dec 01 08:10:00 UTC 2024"
+
+      # ==================== Feature switches ====================
       use_zram:
         required: true
         type: boolean
@@ -124,9 +61,11 @@ on:
       cancel_susfs:
         required: false
         type: boolean
+        default: false
       supp_op:
         required: false
         type: boolean
+        default: false
       droidspaces:
         required: false
         type: string
@@ -148,10 +87,10 @@ jobs:
   prepare-matrix:
     uses: ./.github/workflows/prepare-matrix.yml
     with:
-      data_file: ${{ format('data/{0}/5.15.json', inputs.android_version || 'android13') }}
-      deduplicate_sublevels: true
+      data_file: ${{ inputs.data_file }}
+      deduplicate_sublevels: ${{ inputs.deduplicate_sublevels }}
 
-  build-kernels-a13-5-15:
+  build-kernels:
     needs: prepare-matrix
     name: "${{ matrix.kernel_version }}.${{ matrix.sub_level }}-${{ matrix.android_version }}-${{ matrix.os_patch_level }}"
     strategy:
@@ -162,12 +101,13 @@ jobs:
     secrets: inherit
     with:
       clean_build: ${{ inputs.clean_build }}
+      disable_bakasu: ${{ inputs.disable_bakasu }}
       android_version: ${{ matrix.android_version }}
       kernel_version: ${{ matrix.kernel_version }}
       sub_level: ${{ matrix.sub_level }}
       os_patch_level: ${{ matrix.os_patch_level }}
       revision: ${{ matrix.revision || '' }}
-      ksu_variant: ${{ inputs.clean_build && 'Clean' || 'BakaSU' }}
+      ksu_variant: ${{ inputs.clean_build && 'Clean' || inputs.disable_bakasu && 'NoKSU' || 'BakaSU' }}
       ksu_branch: ${{ inputs.kernelsu_branch }}
       version: ${{ inputs.version || '' }}
       build_time: ${{ inputs.build_time || '' }}
@@ -176,7 +116,7 @@ jobs:
       use_rekernel: ${{ inputs.use_rekernel || false }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       supp_op: ${{ inputs.supp_op || false }}
-      enable_susfs: ${{ !inputs.cancel_susfs }}
+      enable_susfs: ${{ !inputs.cancel_susfs && !inputs.disable_bakasu }}
       droidspaces: ${{ inputs.droidspaces || 'off' }}
       droidspaces_ntsync: ${{ inputs.droidspaces_ntsync || false }}
       use_nomount: ${{ inputs.use_nomount || false }}
