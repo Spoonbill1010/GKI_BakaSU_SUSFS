@@ -7,6 +7,11 @@ run-name: K60 Pro · 5.15.189-android13 · BakaSU + SUSFS
 # BakaSU 已恢复 SUSFS 构建；在 Actions 页面手动运行。
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/kernel-k60-pro-5-15-189.yml"
 
 permissions:
   contents: write
