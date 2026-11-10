@@ -31,7 +31,8 @@ jobs:
       use_bbg: false
       use_zram: false
       use_rekernel: false
-      cve_2026_43499_patch: true
+      apply_custom_patches: true
+      disable_werror: false
       supp_op: false
       droidspaces: "off"
       droidspaces_ntsync: false
