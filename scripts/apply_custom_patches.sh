@@ -465,7 +465,7 @@ for index in "${!PATCH_FILES[@]}"; do
     echo "  - $relative_path"
   done
 
-  if PATCH_REVERSE_CHECK_OUTPUT="$(patch --batch --reverse --dry-run -p1 < "$PATCH_FILE" 2>&1)"; then
+  if PATCH_REVERSE_CHECK_OUTPUT="$(patch --batch --force --reverse --dry-run -p1 < "$PATCH_FILE" 2>&1)"; then
     echo "::endgroup::"
     echo "======================================================================"
     echo "::group::✔ 自定义补丁已存在: $PATCH_NAME"
