@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/**"
       - "scripts/apply_custom_patches.sh"
+      - "tests/test_apply_custom_patches.py"
       - "custom_patches/**"
 
 permissions:
@@ -19,6 +20,9 @@ jobs:
 
       - name: 检查自定义补丁脚本语法
         run: bash -n scripts/apply_custom_patches.sh
+
+      - name: 检查补丁应用与重复应用行为
+        run: python3 tests/test_apply_custom_patches.py
 
       - name: 检查所有自定义补丁格式
         shell: bash
